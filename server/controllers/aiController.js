@@ -56,55 +56,40 @@ const generateRoadmap = async (req, res) => {
 
     const groq = getGroqClient();
 
+    // Groq free tier: 12,000 TPM limit. Keep output lean.
+    // For longer roadmaps, reduce quiz questions to 1 per day to fit within limits.
+    const quizCount = durationDays <= 14 ? 3 : durationDays <= 30 ? 2 : 1;
+    const maxTokens = Math.min(8000, durationDays * 220);
+
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       response_format: { type: 'json_object' },
       messages: [
         {
           role: 'system',
-          content: 'You are an expert learning coach. You always respond with valid JSON only. No explanation, no markdown, no code blocks. Just raw JSON.'
+          content: 'You are a learning coach. Respond with valid JSON only. No markdown, no code blocks. Raw JSON only.'
         },
         {
           role: 'user',
-          content: `Generate a structured ${durationDays}-day learning roadmap for the following goal.
+          content: `Generate a ${durationDays}-day learning roadmap.
 
 Goal: "${goal}"
 Difficulty: ${difficulty || 'Intermediate'}
-Daily time available: ${dailyTimeMinutes || 60} minutes
+Daily time: ${dailyTimeMinutes || 60} minutes
 
-The JSON must follow this exact schema:
-{
-  "goal": "string",
-  "duration_days": number,
-  "roadmap": [
-    {
-      "day": number,
-      "title": "string",
-      "topics": ["topic 1", "topic 2"],
-      "task": "string (specific actionable task)",
-      "estimated_time_minutes": number,
-      "quiz": [
-        {
-          "question": "string",
-          "options": ["A. option", "B. option", "C. option", "D. option"],
-          "answer": "string (must exactly match one option)"
-        }
-      ]
-    }
-  ]
-}
+JSON schema:
+{"goal":"string","duration_days":number,"roadmap":[{"day":number,"title":"string","topics":["topic1","topic2"],"task":"string","estimated_time_minutes":number,"quiz":[{"question":"string","options":["A. opt","B. opt","C. opt","D. opt"],"answer":"string"}]}]}
 
-Requirements:
-- Generate exactly ${durationDays} day entries
-- Each day must have 2-4 topics
-- Each day must have exactly 3 quiz questions
-- Quiz answers must exactly match one of the 4 options
-- Tasks must be specific and actionable
+Rules:
+- Exactly ${durationDays} day entries
+- 2-3 topics per day (keep topic names short)
+- Exactly ${quizCount} quiz question(s) per day
+- Answer must exactly match one option
 - Build progressively from basics to advanced`
         }
       ],
       temperature: 0.7,
-      max_tokens: 32000,
+      max_tokens: maxTokens,
     });
 
     const responseText = completion.choices[0]?.message?.content || '';
@@ -139,8 +124,8 @@ console.log('RAW AI RESPONSE:', responseText.slice(0, 500)); // ADD THIS
 
   } catch (error) {
     console.error('Generate roadmap error:', error);
-    if (error.status === 429) {
-      return res.status(429).json({ message: 'AI quota exceeded. Please try again later.' });
+    if (error.status === 429 || error.status === 413) {
+      return res.status(429).json({ message: 'Request too large for free tier. Try a shorter duration (≤ 30 days) or try again later.' });
     }
     res.status(500).json({ message: 'Failed to generate roadmap. Please try again.' });
   }
