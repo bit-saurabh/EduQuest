@@ -1,5 +1,5 @@
 const Groq = require('groq-sdk');
-
+/**Groq is giving error fix it */
 const getGroqClient = () => {
   if (!process.env.GROQ_API_KEY) {
     throw new Error('GROQ_API_KEY is not set in environment variables.');
