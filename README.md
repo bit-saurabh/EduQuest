@@ -155,23 +155,6 @@ Open `http://localhost:5173` in your browser.
 
 ---
 
-## Deployment
-
-### Backend → Render
-1. Push `server/` to GitHub
-2. Create new Web Service on Render
-3. Build command: `npm install`
-4. Start command: `node server.js`
-5. Add all environment variables from `.env`
-6. Set `NODE_ENV=production`
-7. Set `FRONTEND_URL=https://your-app.vercel.app`
-
-### Frontend → Vercel
-1. Push `client/` to GitHub
-2. Create new project on Vercel
-3. Framework preset: **Vite**
-4. Add environment variable: `VITE_API_URL=https://your-render-backend.onrender.com/api`
-5. Deploy
 
 ---
 
